@@ -13,7 +13,8 @@
 #include "../interface/ntuple_bTagVars.h"
 #include "../interface/ntuple_FatJetInfo.h"
 #include "../interface/ntuple_DeepVertex.h"
-
+#include "../interface/ntuple_GraphB.h"
+#include "../interface/ntuple_pixelclusters.h"
 //ROOT includes
 #include "TTree.h"
 #include <TFile.h>
@@ -94,12 +95,15 @@ private:
     size_t njetstotal_;
     size_t njetswithgenjet_;
     size_t njetsselected_;
+    size_t njetsselected_nogen_;
 
-    ntuple_content * addModule(ntuple_content *m){
+	ntuple_content * addModule(ntuple_content *m, std::string name = ""){
         modules_.push_back(m);
+				module_names_.push_back(name);
         return m;
     }
     std::vector<ntuple_content* > modules_;
+	std::vector<std::string> module_names_;
 
     bool applySelection_;
 };
@@ -122,6 +126,7 @@ DeepNtuplizer::DeepNtuplizer(const edm::ParameterSet& iConfig):
     // read configuration parameters
     const double jetR = iConfig.getParameter<double>("jetR");
     const bool  runFatJets_ = iConfig.getParameter<bool>("runFatJet");
+    const bool  runDeepVertex_ = iConfig.getParameter<bool>("runDeepVertex");
 
     //not implemented yet
     const bool useHerwigCompatibleMatching=iConfig.getParameter<bool>("useHerwigCompatible");
@@ -132,7 +137,7 @@ DeepNtuplizer::DeepNtuplizer(const edm::ParameterSet& iConfig):
     applySelection_=iConfig.getParameter<bool>("applySelection");
 
     ntuple_SV* svmodule=new ntuple_SV("", jetR);
-    addModule(svmodule);
+    addModule(svmodule, "SVNtuple");
 
     //Loose IVF vertices
     //ntuple_SV* svmodule_LooseIVF=new ntuple_SV("LooseIVF_", jetR);
@@ -143,9 +148,24 @@ DeepNtuplizer::DeepNtuplizer(const edm::ParameterSet& iConfig):
     //addModule(svmodule_LooseIVF);
 
     // DeepVertex info
-    // ntuple_DeepVertex* deepvertexmodule=new ntuple_DeepVertex(jetR);
-    // deepvertexmodule->setCandidatesToken(consumes<edm::View<pat::PackedCandidate> >(iConfig.getParameter<edm::InputTag>("candidates")));
-    // addModule(deepvertexmodule);
+    /*
+    if (runDeepVertex_)	{
+        
+        ntuple_DeepVertex* deepvertexmodule=new ntuple_DeepVertex(jetR);
+    	deepvertexmodule->setCandidatesToken(consumes<edm::View<pat::PackedCandidate> >(iConfig.getParameter<edm::InputTag>("candidates")));
+    	addModule(deepvertexmodule);
+        
+    }
+    */  
+
+    ntuple_GraphB* deepvertexmodule=new ntuple_GraphB(jetR);
+    deepvertexmodule->setCandidatesToken(consumes<edm::View<pat::PackedCandidate> >(iConfig.getParameter<edm::InputTag>("candidates")));
+    addModule(deepvertexmodule, "DeepVertextuple");
+
+    ntuple_pixelclusters* pixelclustersmodule=new ntuple_pixelclusters(jetR);
+    pixelclustersmodule->setPixelHits(consumes<edmNew::DetSetVector<SiPixelCluster> >(iConfig.getParameter<edm::InputTag>("pixelhit")));
+    addModule(pixelclustersmodule, "pixelclusterstuple");
+     
 
     ntuple_JetInfo* jetinfo=new ntuple_JetInfo();
     jetinfo->setQglToken(consumes<edm::ValueMap<float>>(edm::InputTag(t_qgtagger, "qgLikelihood")));
@@ -163,6 +183,11 @@ DeepNtuplizer::DeepNtuplizer(const edm::ParameterSet& iConfig):
             consumes<edm::Association<reco::GenJetCollection> >(
                     iConfig.getParameter<edm::InputTag>( "genJetMatchWithNu" )));
 
+    jetinfo->setGenJetMatchAllowDuplicatesToken(
+            consumes<edm::Association<reco::GenJetCollection> >(
+                    iConfig.getParameter<edm::InputTag>( "genJetMatchAllowDuplicates" )));
+
+
     jetinfo->setGenParticlesToken(
             consumes<reco::GenParticleCollection>(
                     iConfig.getParameter<edm::InputTag>("pruned")));
@@ -175,20 +200,20 @@ DeepNtuplizer::DeepNtuplizer(const edm::ParameterSet& iConfig):
             consumes<pat::ElectronCollection>(
                     iConfig.getParameter<edm::InputTag>("electrons")));
 
-    addModule(jetinfo);
+    addModule(jetinfo, "jetinfo");
 
     ntuple_pfCands * pfcands = new ntuple_pfCands();
     pfcands->setJetRadius(jetR);
 
-    addModule(pfcands);
+    addModule(pfcands, "pfcands");
 
-    addModule(new ntuple_bTagVars());
+    addModule(new ntuple_bTagVars(), "bTagVars");
 
     if(runFatJets_){
         auto *fatjetinfo = new ntuple_FatJetInfo(jetR);
         fatjetinfo->setGenParticleToken(consumes<reco::GenParticleCollection>(iConfig.getParameter<edm::InputTag>("pruned")));
         fatjetinfo->setFatJetToken(consumes<pat::JetCollection>(iConfig.getParameter<edm::InputTag>("fatjets")));
-        addModule(fatjetinfo);
+        addModule(fatjetinfo, "fatJets");
     }
     /*
      *
@@ -262,15 +287,22 @@ DeepNtuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
             njetswithgenjet_++;
 
         bool writejet=true;
+				size_t idx = 0;
         for(auto& m:modules_){
+					//std::cout << module_names_[idx] << std::endl;
             if(! m->fillBranches(jet, jetidx, jets.product())){
                 writejet=false;
                 if(applySelection_) break;
             }
+						idx++;
         }
+				//std::cout << "Jet done" << std::endl;
         if( (writejet&&applySelection_) || !applySelection_ ){
             tree_->Fill();
             njetsselected_++;
+	    if(!jet.genJet())
+	      njetsselected_nogen_++;
+
         }
     } // end of looping over the jets
 }
@@ -292,6 +324,7 @@ DeepNtuplizer::beginJob()
     njetstotal_=0;
     njetswithgenjet_=0;
     njetsselected_=0;
+    njetsselected_nogen_=0;
 }
 
 // ------------ method called once each job just after ending the event loop  ------------
@@ -304,6 +337,7 @@ DeepNtuplizer::endJob()
     std::cout << "total number of selected jets:  "<< njetsselected_<<std::endl;
     std::cout << "fraction of selected jets:      "<< (float)njetsselected_/(float)njetstotal_<<std::endl;
     std::cout << "fraction of selected jets with gen: "<< (float)njetsselected_/(float)njetswithgenjet_<<std::endl;
+    std::cout << "fraction of selected jetsout with gen: "<< (float)njetsselected_nogen_/(float)njetsselected_<<std::endl;
 
 }
 
