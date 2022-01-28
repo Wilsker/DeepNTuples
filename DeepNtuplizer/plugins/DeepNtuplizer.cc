@@ -14,7 +14,7 @@
 #include "../interface/ntuple_FatJetInfo.h"
 #include "../interface/ntuple_DeepVertex.h"
 #include "../interface/ntuple_GraphB.h"
-#include "../interface/ntuple_pixelclusters.h"
+//#include "../interface/ntuple_pixelclusters.h"
 //ROOT includes
 #include "TTree.h"
 #include <TFile.h>
@@ -53,8 +53,6 @@
 #include "TrackingTools/IPTools/interface/IPTools.h"
 #include "DataFormats/GeometryCommonDetAlgo/interface/Measurement1D.h"
 
-
-
 #if defined( __GXX_EXPERIMENTAL_CXX0X__)
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
 #endif
@@ -84,8 +82,9 @@ private:
     edm::EDGetTokenT<reco::VertexCollection> vtxToken_;
     edm::EDGetTokenT<reco::VertexCompositePtrCandidateCollection> svToken_;
     edm::EDGetTokenT<edm::View<pat::Jet> >      jetToken_;
-    edm::EDGetTokenT<std::vector<PileupSummaryInfo>> puToken_;
+    edm::EDGetTokenT<std::vector<PileupSummaryInfo> > puToken_;
     edm::EDGetTokenT<double> rhoToken_;
+    edm::EDGetTokenT<edm::OwnVector<reco::BaseTagInfo,edm::ClonePolicy<reco::BaseTagInfo> > > pixHitsToken_;
 
     std::string t_qgtagger;
 
@@ -110,16 +109,16 @@ private:
 
 DeepNtuplizer::DeepNtuplizer(const edm::ParameterSet& iConfig):
                             vtxToken_(consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("vertices"))),
-                            svToken_(consumes<reco::VertexCompositePtrCandidateCollection>(
-                                    iConfig.getParameter<edm::InputTag>("secVertices"))),
-                                    jetToken_(consumes<edm::View<pat::Jet> >(iConfig.getParameter<edm::InputTag>("jets"))),
-                                    puToken_(consumes<std::vector<PileupSummaryInfo >>(iConfig.getParameter<edm::InputTag>("pupInfo"))),
-                                    rhoToken_(consumes<double>(iConfig.getParameter<edm::InputTag>("rhoInfo"))),
-                                    t_qgtagger(iConfig.getParameter<std::string>("qgtagger"))
+                            svToken_(consumes<reco::VertexCompositePtrCandidateCollection>(iConfig.getParameter<edm::InputTag>("secVertices"))),
+                            jetToken_(consumes<edm::View<pat::Jet> >(iConfig.getParameter<edm::InputTag>("jets"))),
+                            puToken_(consumes<std::vector<PileupSummaryInfo >>(iConfig.getParameter<edm::InputTag>("pupInfo"))),
+                            rhoToken_(consumes<double>(iConfig.getParameter<edm::InputTag>("rhoInfo"))),
+                            pixHitsToken_(consumes< edm::OwnVector<reco::BaseTagInfo,edm::ClonePolicy<reco::BaseTagInfo> > > (iConfig.getParameter<edm::InputTag>("pixelhit"))),
+                            t_qgtagger(iConfig.getParameter<std::string>("qgtagger"))
 {
     /*
      *  Initialise the modules here
-     *  Everything else does not need to be changed if
+     *  Everything else does not eed to be changed if
      *  modules don't interact.
      */
 
@@ -150,22 +149,22 @@ DeepNtuplizer::DeepNtuplizer(const edm::ParameterSet& iConfig):
     // DeepVertex info
     /*
     if (runDeepVertex_)	{
-        
+
         ntuple_DeepVertex* deepvertexmodule=new ntuple_DeepVertex(jetR);
     	deepvertexmodule->setCandidatesToken(consumes<edm::View<pat::PackedCandidate> >(iConfig.getParameter<edm::InputTag>("candidates")));
     	addModule(deepvertexmodule);
-        
+
     }
-    */  
+    */
 
     ntuple_GraphB* deepvertexmodule=new ntuple_GraphB(jetR);
     deepvertexmodule->setCandidatesToken(consumes<edm::View<pat::PackedCandidate> >(iConfig.getParameter<edm::InputTag>("candidates")));
     addModule(deepvertexmodule, "DeepVertextuple");
 
-    ntuple_pixelclusters* pixelclustersmodule=new ntuple_pixelclusters(jetR);
+    /*ntuple_pixelclusters* pixelclustersmodule=new ntuple_pixelclusters(jetR);
     pixelclustersmodule->setPixelHits(consumes<edmNew::DetSetVector<SiPixelCluster> >(iConfig.getParameter<edm::InputTag>("pixelhit")));
-    addModule(pixelclustersmodule, "pixelclusterstuple");
-     
+    addModule(pixelclustersmodule, "pixelclusterstuple");*/
+
 
     ntuple_JetInfo* jetinfo=new ntuple_JetInfo();
     jetinfo->setQglToken(consumes<edm::ValueMap<float>>(edm::InputTag(t_qgtagger, "qgLikelihood")));
@@ -258,6 +257,11 @@ DeepNtuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     edm::Handle<edm::View<pat::Jet> > jets;
     iEvent.getByToken(jetToken_, jets);
 
+
+    edm::Handle< edm::OwnVector<reco::BaseTagInfo,edm::ClonePolicy<reco::BaseTagInfo> > > pixHits;
+    iEvent.getByToken(pixHitsToken_, pixHits);
+    std::cout << "pixelhits handle isValid: " << pixHits.isValid() << std::endl;
+
     for(auto& m:modules_){
         m->setPrimaryVertices(vertices.product());
         m->setSecVertices(secvertices.product());
@@ -282,6 +286,20 @@ DeepNtuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         size_t jetidx=indices.at(j);
         jetIter = jets->begin()+jetidx;
         const pat::Jet& jet = *jetIter;
+
+        // Check tagInfo available in jet collection
+        /*std::vector<std::string> taginfo_labels_ = jet.tagInfoLabels();
+        for (size_t label_ = 0; label_ < taginfo_labels_.size(); label_++){
+            std::cout <<  taginfo_labels_.at(label_) << std::endl;
+        }*/
+        //const reco::PixelClusterTagInfo* tagInfoPixelCluster = jet.tagInfoPixelCluster();
+
+
+        /*auto df_taginfo = jet.hasTagInfo("recoBasedTagInfosOwned_slimmedJets");
+        if(jet.hasTagInfo("pfDeepFlavour")) {
+          std::cout << "Valid pointer" << std::endl;
+        }
+        else{std::cout << "Invalid taginfo pointer" << std::endl;}*/
 
         if(jet.genJet())
             njetswithgenjet_++;
