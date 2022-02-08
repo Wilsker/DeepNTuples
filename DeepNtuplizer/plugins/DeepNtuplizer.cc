@@ -89,12 +89,7 @@ private:
     edm::EDGetTokenT<edm::View<pat::Jet> >      jetToken_;
     edm::EDGetTokenT<std::vector<PileupSummaryInfo> > puToken_;
     edm::EDGetTokenT<double> rhoToken_;
-<<<<<<< HEAD
     edm::EDGetTokenT< edm::View<reco::BaseTagInfo> > pixHitsToken_;
-=======
-    edm::EDGetTokenT<edm::OwnVector<reco::BaseTagInfo,edm::ClonePolicy<reco::BaseTagInfo> > > pixHitsToken_;
->>>>>>> 8df5a796de9103e9e4592fb234283ec8107cb118
-
     std::string t_qgtagger;
 
     edm::Service<TFileService> fs;
@@ -122,12 +117,7 @@ DeepNtuplizer::DeepNtuplizer(const edm::ParameterSet& iConfig):
                             jetToken_(consumes<edm::View<pat::Jet> >(iConfig.getParameter<edm::InputTag>("jets"))),
                             puToken_(consumes<std::vector<PileupSummaryInfo >>(iConfig.getParameter<edm::InputTag>("pupInfo"))),
                             rhoToken_(consumes<double>(iConfig.getParameter<edm::InputTag>("rhoInfo"))),
-<<<<<<< HEAD
                             pixHitsToken_(consumes< edm::View<reco::BaseTagInfo> > (iConfig.getParameter<edm::InputTag>("pixelhit"))),
-=======
-                            pixHitsToken_(consumes< edm::OwnVector<reco::BaseTagInfo,edm::ClonePolicy<reco::BaseTagInfo> > > (iConfig.getParameter<edm::InputTag>("pixelhit"))),
->>>>>>> 8df5a796de9103e9e4592fb234283ec8107cb118
-                            t_qgtagger(iConfig.getParameter<std::string>("qgtagger"))
 {
     /*
      *  Initialise the modules here
@@ -270,7 +260,7 @@ DeepNtuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     edm::Handle<edm::View<pat::Jet> > jets;
     iEvent.getByToken(jetToken_, jets);
 
-<<<<<<< HEAD
+
     edm::Handle< edm::View<reco::BaseTagInfo> > pixHits;
     iEvent.getByToken(pixHitsToken_, pixHits);
 
@@ -287,13 +277,6 @@ DeepNtuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     else{
       std::cout << "pixHits invalid" << std::endl;
     }
-
-=======
-
-    edm::Handle< edm::OwnVector<reco::BaseTagInfo,edm::ClonePolicy<reco::BaseTagInfo> > > pixHits;
-    iEvent.getByToken(pixHitsToken_, pixHits);
-    std::cout << "pixelhits handle isValid: " << pixHits.isValid() << std::endl;
->>>>>>> 8df5a796de9103e9e4592fb234283ec8107cb118
 
     for(auto& m:modules_){
         m->setPrimaryVertices(vertices.product());
@@ -321,23 +304,6 @@ DeepNtuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
         size_t jetidx=indices.at(j);
         jetIter = jets->begin()+jetidx;
         const pat::Jet& jet = *jetIter;
-
-<<<<<<< HEAD
-=======
-        // Check tagInfo available in jet collection
-        /*std::vector<std::string> taginfo_labels_ = jet.tagInfoLabels();
-        for (size_t label_ = 0; label_ < taginfo_labels_.size(); label_++){
-            std::cout <<  taginfo_labels_.at(label_) << std::endl;
-        }*/
-        //const reco::PixelClusterTagInfo* tagInfoPixelCluster = jet.tagInfoPixelCluster();
-
-
-        /*auto df_taginfo = jet.hasTagInfo("recoBasedTagInfosOwned_slimmedJets");
-        if(jet.hasTagInfo("pfDeepFlavour")) {
-          std::cout << "Valid pointer" << std::endl;
-        }
-        else{std::cout << "Invalid taginfo pointer" << std::endl;}*/
->>>>>>> 8df5a796de9103e9e4592fb234283ec8107cb118
 
         if(jet.genJet())
             njetswithgenjet_++;
