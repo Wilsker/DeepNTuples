@@ -4,11 +4,7 @@ deepntuplizer = cms.EDAnalyzer('DeepNtuplizer',
                                 vertices   = cms.InputTag("offlineSlimmedPrimaryVertices"),
                                 secVertices = cms.InputTag("slimmedSecondaryVertices"),
                                 jets       = cms.InputTag("slimmedJetsPuppi"),
-<<<<<<< HEAD
                                 pixelhit = cms.InputTag("slimmedJets", "tagInfos", "RECO"),
-=======
-                                pixelhit = cms.InputTag("slimmedJets"),
->>>>>>> 8df5a796de9103e9e4592fb234283ec8107cb118
                                 slimmedjets = cms.InputTag("slimmedJets"),
                                 jetR       = cms.double(0.4),
                                 runFatJet = cms.bool(False),
