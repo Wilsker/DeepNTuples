@@ -118,6 +118,7 @@ DeepNtuplizer::DeepNtuplizer(const edm::ParameterSet& iConfig):
                             puToken_(consumes<std::vector<PileupSummaryInfo >>(iConfig.getParameter<edm::InputTag>("pupInfo"))),
                             rhoToken_(consumes<double>(iConfig.getParameter<edm::InputTag>("rhoInfo"))),
                             pixHitsToken_(consumes< edm::View<reco::BaseTagInfo> > (iConfig.getParameter<edm::InputTag>("pixelhit"))),
+                            t_qgtagger(iConfig.getParameter<std::string>("qgtagger"))
 {
     /*
      *  Initialise the modules here
@@ -260,23 +261,8 @@ DeepNtuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     edm::Handle<edm::View<pat::Jet> > jets;
     iEvent.getByToken(jetToken_, jets);
 
-
     edm::Handle< edm::View<reco::BaseTagInfo> > pixHits;
     iEvent.getByToken(pixHitsToken_, pixHits);
-
-    if(pixHits.isValid()){
-      // The data should be stored in a reco::PixelClusterData struct inside the TagInfos
-      // https://github.com/cms-sw/cmssw/blob/6d2f66057131baacc2fcbdd203588c41c885b42c/DataFormats/BTauReco/interface/PixelClusterTagInfo.h
-      char const * deref_pixHits_type_ = typeid( *pixHits ).name();
-      std::cout << "*pixHits type = " << boost::core::demangle(deref_pixHits_type_) << std::endl;
-      for (size_t i_j = 0; i_j < pixHits->size(); ++i_j) {
-        char const * deref_pixHits_entry_type_ = typeid( (*pixHits)[i_j] ).name();
-        std::cout << "(*pixHits)[i_j] type = " << boost::core::demangle(deref_pixHits_entry_type_) << std::endl;
-      }
-    }
-    else{
-      std::cout << "pixHits invalid" << std::endl;
-    }
 
     for(auto& m:modules_){
         m->setPrimaryVertices(vertices.product());
@@ -291,10 +277,22 @@ DeepNtuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     for(size_t i=0;i<jets->size();i++)
         indices.at(i)=i;
 
-
-
     if(applySelection_)
         std::random_shuffle (indices.begin(),indices.end());
+
+    if(pixHits.isValid()){
+      // The data should be stored in a reco::PixelClusterData struct inside the TagInfos
+      // https://github.com/cms-sw/cmssw/blob/6d2f66057131baacc2fcbdd203588c41c885b42c/DataFormats/BTauReco/interface/PixelClusterTagInfo.h
+      char const * deref_pixHits_type_ = typeid( *pixHits ).name();
+      std::cout << "*pixHits type = " << boost::core::demangle(deref_pixHits_type_) << std::endl;
+      for (size_t i_j = 0; i_j < pixHits->size(); ++i_j) {
+        char const * deref_pixHits_entry_type_ = typeid( (*pixHits)[i_j] ).name();
+        std::cout << "(*pixHits)[i_j] type = " << boost::core::demangle(deref_pixHits_entry_type_) << std::endl;
+      }
+    }
+    else{
+      std::cout << "pixHits invalid" << std::endl;
+    }
 
     edm::View<pat::Jet>::const_iterator jetIter;
     // loop over the jets
