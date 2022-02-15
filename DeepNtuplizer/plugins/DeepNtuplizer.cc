@@ -286,8 +286,22 @@ DeepNtuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
       char const * deref_pixHits_type_ = typeid( *pixHits ).name();
       std::cout << "*pixHits type = " << boost::core::demangle(deref_pixHits_type_) << std::endl;
       for (size_t i_j = 0; i_j < pixHits->size(); ++i_j) {
-        char const * deref_pixHits_entry_type_ = typeid( (*pixHits)[i_j] ).name();
-        std::cout << "(*pixHits)[i_j] type = " << boost::core::demangle(deref_pixHits_entry_type_) << std::endl;
+        const reco::PixelClusterTagInfo *test = static_cast<const reco::PixelClusterTagInfo*>( &((*pixHits)[i_j]) );
+        char const * test_entry_type_ = typeid( *test ).name();
+        std::cout << "test_entry_type_" << boost::core::demangle(test_entry_type_) << std::endl;
+
+        edm::RefToBase<reco::Jet> jref = (*test).jet();
+        const reco::PixelClusterData& pcd =(*test).data();
+
+        std::vector<int8_t> vtest = pcd.r004;
+        std::cout << "vtest size " << vtest.size() << std::endl;
+        for(const auto& value: vtest) {
+          std::cout << "value:" << value << "\n";
+        }
+        for(std::vector<int>::size_type i = 0; i != vtest.size(); i++) {
+          std::cout << "vtest at " << i << " = " << vtest[i] << std::endl;
+        }
+
       }
     }
     else{
