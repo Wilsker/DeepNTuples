@@ -285,14 +285,16 @@ DeepNtuplizer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
     // If handle was valid inspect content
     // The data should be stored in a reco::PixelClusterData struct inside the TagInfos
     // https://github.com/cms-sw/cmssw/blob/6d2f66057131baacc2fcbdd203588c41c885b42c/DataFormats/BTauReco/interface/PixelClusterTagInfo.h
-    for (size_t i_j = 0; i_j < slimmedjets->size(); ++i_j) {
-      pat::Jet jet = slimmedjets->at(i_j);
+    int count_njets_w_pixelclust = 0;
+    for (size_t i_j = 0; i_j < jets->size(); ++i_j) {
+      pat::Jet jet = jets->at(i_j);
       edm::RefToBase<pat::Jet> jetRef = jets->refAt(i_j);
       std::vector<std::string> labels = jet.tagInfoLabels();
-      for(unsigned int k = 0; k < labels.size(); k++) {
-        std::cout << labels[k] << " "  << std::endl;
-      }
       if(jet.hasTagInfo("pixelCluster")){
+        count_njets_w_pixelclust++;
+        for(unsigned int k = 0; k < labels.size(); k++) {
+          std::cout << labels[k] << " "  << std::endl;
+        }
         std::cout << jetRef.get() << " | " << jetRef << " : ";
         const reco::PixelClusterTagInfo *test = static_cast<const reco::PixelClusterTagInfo*>( jet.tagInfo("pixelCluster") );
         reco::PixelClusterData pcd =test->data();
